@@ -458,6 +458,15 @@ out:
     return ret;
 }
 
+static int pack_inspect_size_data(const container_t *cont, container_inspect *inspect)
+{
+    int ret = 0;
+    // TODO: implement inspect --size
+    inspect->size_rw = inspect->size_root_fs = 666;
+
+    return ret;
+}
+
 static int merge_default_ulimit_with_ulimit(container_inspect *out_inspect)
 {
     int ret = 0;
@@ -495,7 +504,7 @@ out:
     return ret;
 }
 
-static container_inspect *pack_inspect_data(const container_t *cont, bool with_host_config)
+static container_inspect *pack_inspect_data(const container_t *cont, bool with_host_config, bool with_size_info)
 {
     container_inspect *inspect = NULL;
 
@@ -525,6 +534,10 @@ static container_inspect *pack_inspect_data(const container_t *cont, bool with_h
         ERROR("Failed to pack container config data, continue to pack other information");
     }
 
+    if (with_size_info && pack_inspect_size_data(cont, inspect) != 0) {
+        ERROR("Failed to pack container size data, continue to pack other information");
+    }
+
     if (strcmp(cont->common_config->image_type, IMAGE_TYPE_OCI) == 0) {
         inspect->graph_driver = im_graphdriver_get_metadata_by_container_id(cont->common_config->id);
         if (inspect->graph_driver == NULL) {
@@ -536,7 +549,7 @@ out:
     return inspect;
 }
 
-container_inspect *inspect_container(const char *id, int timeout, bool with_host_config)
+container_inspect *inspect_container(const char *id, int timeout, bool with_host_config, bool with_size_info)
 {
     int ret = 0;
     container_inspect *inspect = NULL;
@@ -563,7 +576,7 @@ container_inspect *inspect_container(const char *id, int timeout, bool with_host
         goto out;
     }
 
-    inspect = pack_inspect_data(cont, with_host_config);
+    inspect = pack_inspect_data(cont, with_host_config, with_size_info);
     ret = 0;
     container_unlock(cont);
 
