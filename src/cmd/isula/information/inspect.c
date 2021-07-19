@@ -48,14 +48,6 @@ struct client_arguments g_cmd_inspect_args = {
 #define CONTAINER_INSPECT_ERR (-1)
 #define CONTAINER_NOT_FOUND (-2)
 
-#define IMAGE_INSPECT_ERR (-1)
-#define IMAGE_NOT_FOUND (-2)
-
-#define INSPECT_STATUS_SUCCESS (0)
-#define INSPECT_STATUS_NO_SUCH_OBJECT (-1)
-#define INSPECT_STATUS_NO_SUCH_TYPE (-2)
-#define INSPECT_STATUS_ERR (-3)
-
 typedef struct {
     yajl_val tree_root; /* Should be free by yajl_tree_free() */
     yajl_val tree_print; /* Point to the object be printf */
@@ -232,15 +224,7 @@ static int client_inspect_image(const struct isula_inspect_request *request, str
 
     ret = ops->image.inspect(request, response, config);
     if (ret != 0) {
-        if ((response->errmsg != NULL) &&
-            (strstr(response->errmsg, "Inspect invalid name") != NULL ||
-             strstr(response->errmsg, "No such image or container or accelerator") != NULL)) {
-            return IMAGE_NOT_FOUND;
-        }
-
-        /* have the image, but failed to inspect due to other reasons */
         client_print_error(response->cc, response->server_errono, response->errmsg);
-        ret = IMAGE_INSPECT_ERR;
     }
 
     return ret;
@@ -249,7 +233,7 @@ static int client_inspect_image(const struct isula_inspect_request *request, str
 /*
  * Create a inspect request message and call RPC
  */
-static char *client_inspect(const struct client_arguments *args, int *status)
+static char *client_inspect(const struct client_arguments *args)
 {
     isula_connect_ops *ops = NULL;
     struct isula_inspect_request request = { 0 };
@@ -261,85 +245,40 @@ static char *client_inspect(const struct client_arguments *args, int *status)
     response = util_common_calloc_s(sizeof(struct isula_inspect_response));
     if (response == NULL) {
         ERROR("Out of memory");
-        *status = INSPECT_STATUS_ERR;
         goto out;
     }
 
     request.name = args->name;
     request.bformat = args->format ? true : false;
     request.timeout = args->time;
-    request.bsize = args->size;
 
     ops = get_connect_client_ops();
     if (ops == NULL || ops->container.inspect == NULL || ops->image.inspect == NULL) {
         ERROR("Unimplemented ops");
-        *status = INSPECT_STATUS_ERR;
         goto out;
     }
 
     config = get_connect_config(args);
+    result = client_inspect_container(&request, response, &config, ops);
+    if (result == CONTAINER_NOT_FOUND) {
+        isula_inspect_response_free(response);
+        response = NULL;
 
-    bool valid_type = false, inspect_container = false, inspect_image = false;
-
-    if (args->inspect_type != NULL) {
-        if (strncmp(args->inspect_type, "container", sizeof("container")) == 0) {
-            inspect_container = valid_type = true;
-        } else if (strncmp(args->inspect_type, "image", sizeof("image")) == 0) {
-            inspect_image = valid_type = true;
-        }
-        if (valid_type == false) {
-            ERROR("Not a valid value for inspect --type");
-            *status = INSPECT_STATUS_NO_SUCH_TYPE;
+        response = util_common_calloc_s(sizeof(struct isula_inspect_response));
+        if (response == NULL) {
+            ERROR("Out of memory");
             goto out;
         }
-    }
 
-    const char* inspect_type = args->inspect_type;
-
-    if (inspect_type == NULL || inspect_container) {
-        result = client_inspect_container(&request, response, &config, ops);
-        if (result == CONTAINER_NOT_FOUND) {
-            isula_inspect_response_free(response);
-            response = NULL;
-            response = util_common_calloc_s(sizeof(struct isula_inspect_response));
-            if (response == NULL) {
-                ERROR("Out of memory");
-                *status = INSPECT_STATUS_ERR;
-                goto out;
-            }
-            if (inspect_container) {
-                *status = INSPECT_STATUS_NO_SUCH_OBJECT;
-                goto out;
-            }
-        } else {
-            goto check_response;
-        }
-    }
-    
-    if (inspect_type == NULL || inspect_image) {
         result = client_inspect_image(&request, response, &config, ops);
-        if (result == CONTAINER_NOT_FOUND) {
-            isula_inspect_response_free(response);
-            response = NULL;
-            response = util_common_calloc_s(sizeof(struct isula_inspect_response));
-            if (response == NULL) {
-                ERROR("Out of memory");
-                *status = INSPECT_STATUS_ERR;
-                goto out;
-            }
-            if (inspect_image) {
-                *status = INSPECT_STATUS_NO_SUCH_OBJECT;
-                goto out;
-            }
-        } else {
-            goto check_response;
-        }
     }
 
-check_response:
+    if (result != 0) {
+        goto out;
+    }
+
     if (response == NULL || response->json == NULL) {
         ERROR("Container or image json is empty");
-        *status = INSPECT_STATUS_ERR;
         goto out;
     }
 
@@ -936,7 +875,7 @@ static int do_inspect()
 {
     int i = 0;
     int j = 0;
-    int status = INSPECT_STATUS_SUCCESS;
+    int status = 0;
     int ret = 0;
     int success_counts = 0;
     char *json = NULL;
@@ -966,14 +905,16 @@ static int do_inspect()
 
     for (i = 0; i < g_cmd_inspect_args.argc; i++) {
         g_cmd_inspect_args.name = g_cmd_inspect_args.argv[i];
-        json = client_inspect(&g_cmd_inspect_args, &status);
+        json = client_inspect(&g_cmd_inspect_args);
         if (json == NULL) {
+            status = -1;
             break;
         }
 
         if (g_cmd_inspect_args.format != NULL) {
             for (j = 0; j < filter_string_len; j++) {
                 if (inspect_parse_json(json, filter_string[j], &tree_array[i * filter_string_len + j])) {
+                    status = -1;
                     free(json);
                     json = NULL;
                     break;
@@ -982,6 +923,7 @@ static int do_inspect()
             }
         } else {
             if (inspect_parse_json(json, NULL, &tree_array[i])) {
+                status = -1;
                 free(json);
                 json = NULL;
                 break;
@@ -992,18 +934,12 @@ static int do_inspect()
         json = NULL;
     }
 
-    if (status == INSPECT_STATUS_SUCCESS && tree_array != NULL) {
+    if (status == 0 && tree_array != NULL) {
         inspect_show_result(success_counts, tree_array, g_cmd_inspect_args.format, json_format);
-    } else if (status == INSPECT_STATUS_NO_SUCH_OBJECT) {
+    }
+
+    if (status) {
         COMMAND_ERROR("Inspect error: No such object:%s", g_cmd_inspect_args.name);
-        ret = ECOMMON;
-        goto out;
-    } else if (status == INSPECT_STATUS_NO_SUCH_TYPE) {
-        COMMAND_ERROR("Inspect error: No such type:%s", g_cmd_inspect_args.inspect_type);
-        ret = ECOMMON;
-        goto out;
-    } else if (status == INSPECT_STATUS_ERR) {
-        COMMAND_ERROR("Inspect error: Other error");
         ret = ECOMMON;
         goto out;
     }

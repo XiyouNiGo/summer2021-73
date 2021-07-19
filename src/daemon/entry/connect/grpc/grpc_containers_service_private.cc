@@ -446,7 +446,6 @@ int ContainerServiceImpl::inspect_request_from_grpc(const InspectContainerReques
 
     tmpreq->bformat = grequest->bformat();
     tmpreq->timeout = grequest->timeout();
-    tmpreq->bsize = grequest->bsize();
 
     *request = tmpreq;
     return 0;
