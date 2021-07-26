@@ -57,7 +57,7 @@
                 "type": "ArrayOfStrings"
             },
             "total_mem": {
-                "type": "uint32"
+                "type": "double"
             },
             "http_proxy": {
                 "type": "string"
