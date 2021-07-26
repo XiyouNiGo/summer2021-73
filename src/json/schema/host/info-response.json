@@ -79,6 +79,12 @@
             },
             "errmsg": {
                 "type": "string"
+            },
+            "registry_mirrors": {
+                "type": "ArrayOfStrings"
+            },
+            "insecure_registries": {
+                "type": "ArrayOfStrings"
             }
         }
 }
