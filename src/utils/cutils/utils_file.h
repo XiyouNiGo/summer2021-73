@@ -113,6 +113,10 @@ int util_list_all_entries(const char *directory, char ***out);
 //       2. If fifo or socket exist in source, this function will return failure.
 int util_copy_dir_recursive(char *copy_dst, char *copy_src);
 
+char *util_get_default_tmp_dir();
+
+char *util_get_tmp_file(const char *dir, const char *pattern);
+
 #ifdef __cplusplus
 }
 #endif
