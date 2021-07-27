@@ -1430,6 +1430,49 @@ out:
     return result;
 }
 
+char *util_get_default_tmp_dir()
+{
+    char *dir = NULL;
+    dir = getenv("TMPDIR");
+    if (dir == NULL) {
+        dir = "/tmp";
+    }
+    return dir;
+}
+
+char *util_get_tmp_file(const char *dir, const char *pattern)
+{
+    char *join_path = NULL;
+    char *tmp_file = NULL;
+
+    if (dir == NULL) {
+        dir = util_get_default_tmp_dir();
+    }
+
+    join_path = util_path_join(dir, pattern);
+    if (join_path == NULL) {
+        ERROR("join path failed");
+        goto out;
+    }
+
+    while (1) {
+        tmp_file = get_random_tmp_file(join_path);
+        if (tmp_file == NULL) {
+            ERROR("get random tmp file failed");
+            goto out;
+        }
+        if (util_file_exists(tmp_file)) {
+            free(tmp_file);
+            continue;
+        }
+        break;
+    }
+
+out:
+    free(join_path);
+    return tmp_file;
+}
+
 static int do_atomic_write_file(const char *fname, const char *content, size_t content_len, mode_t mode, bool sync)
 {
     int ret = 0;
