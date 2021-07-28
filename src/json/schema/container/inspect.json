@@ -130,6 +130,12 @@
                 "$ref": "../docker/types/mount-point.json"
             }
         },
+        "SizeRw": {
+            "type": "int64"
+        },
+        "SizeRootFs" : {
+            "type": "int64"
+        },
         "Config": {
             "type": "object",
             "properties": {

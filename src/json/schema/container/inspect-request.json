@@ -10,6 +10,9 @@
 		},
 		"bformat": {
 			"type": "boolean"
+		},
+		"bsize": {
+			"type": "boolean"
 		}
 	}
 }

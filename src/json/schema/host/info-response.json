@@ -57,7 +57,7 @@
                 "type": "ArrayOfStrings"
             },
             "total_mem": {
-                "type": "uint32"
+                "type": "double"
             },
             "http_proxy": {
                 "type": "string"
@@ -79,6 +79,12 @@
             },
             "errmsg": {
                 "type": "string"
+            },
+            "registry_mirrors": {
+                "type": "ArrayOfStrings"
+            },
+            "insecure_registries": {
+                "type": "ArrayOfStrings"
             }
         }
 }
