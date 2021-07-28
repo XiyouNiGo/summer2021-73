@@ -2073,3 +2073,231 @@ out:
     *diff_size = total_size;
     return ret;
 }
+
+// support_native checks whether the filesystem has a bug
+// which copies up the opaque flag when copying up an opaque
+// directory or the kernel enable CONFIG_OVERLAY_FS_REDIRECT_DIR.
+// When these exist naive diff should be used.
+//
+// When running in a user namespace, returns false immediately.
+bool overlay2_support_native(const char *root_path)
+{
+    int ret = 0;
+    int fd = 0;
+    bool is_support = false;
+    char *tmp_root_path = NULL;
+    char *merged_dir = NULL;
+    char *new_name = NULL;
+    char xattr_redirect[XATTR_NAME_MAX] = { 0 };
+    char xattr_opaque[XATTR_NAME_MAX] = { 0 };
+    char tmp_path[PATH_MAX] = { 0 };
+
+    if (running_in_userns()) {
+        ERROR("running in a user namespace");
+        goto out;
+    }
+    tmp_root_path = util_get_tmp_file(root_path, "opaque-bug-check");
+    if (tmp_root_path == NULL) {
+        ERROR("get temp directory failed");
+        goto out;
+    }
+
+    ret = util_mkdir_p(tmp_root_path, TEMP_DIRECTORY_MODE);
+    if (ret != 0) {
+        ERROR("mkdir failed");
+        goto out;
+    }
+
+    // Make directories l1/d, l1/d1, l2/d, l3, work, merged
+    ret = snprintf(tmp_path, PATH_MAX, "%s/%s/%s", tmp_root_path, "l1", "d");
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto rmdir_out;
+    }
+    ret = util_mkdir_p(tmp_path, DEFAULT_HIGHEST_DIRECTORY_MODE);
+    if (ret != 0) {
+        ERROR("mkdir failed");
+        goto rmdir_out;
+    }
+
+    ret = snprintf(tmp_path, PATH_MAX, "%s/%s/%s", tmp_root_path, "l1", "d1");
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto rmdir_out;
+    }
+    ret = util_mkdir_p(tmp_path, DEFAULT_HIGHEST_DIRECTORY_MODE);
+    if (ret != 0) {
+        ERROR("mkdir failed");
+        goto rmdir_out;
+    }
+
+    ret = snprintf(tmp_path, PATH_MAX, "%s/%s/%s", tmp_root_path, "l2", "d");
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto rmdir_out;
+    }
+    ret = util_mkdir_p(tmp_path, DEFAULT_HIGHEST_DIRECTORY_MODE);
+    if (ret != 0) {
+        ERROR("mkdir failed");
+        goto rmdir_out;
+    }
+
+    ret = snprintf(tmp_path, PATH_MAX, "%s/%s", tmp_root_path, "l3");
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto rmdir_out;
+    }
+    ret = util_mkdir_p(tmp_path, DEFAULT_HIGHEST_DIRECTORY_MODE);
+    if (ret != 0) {
+        ERROR("mkdir failed");
+        goto rmdir_out;
+    }
+
+    ret = snprintf(tmp_path, PATH_MAX, "%s/%s", tmp_root_path, OVERLAY_LAYER_WORK);
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto rmdir_out;
+    }
+    ret = util_mkdir_p(tmp_path, DEFAULT_HIGHEST_DIRECTORY_MODE);
+    if (ret != 0) {
+        ERROR("mkdir failed");
+        goto rmdir_out;
+    }
+
+    ret = snprintf(tmp_path, PATH_MAX, "%s/%s", tmp_root_path, OVERLAY_LAYER_MERGED);
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto rmdir_out;
+    }
+    ret = util_mkdir_p(tmp_path, DEFAULT_HIGHEST_DIRECTORY_MODE);
+    if (ret != 0) {
+        ERROR("mkdir failed");
+        goto rmdir_out;
+    }
+
+    // Mark l2/d as opaque
+    ret = snprintf(tmp_path, PATH_MAX, "%s/%s/%s", tmp_root_path, "l2", "d");
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto rmdir_out;
+    }
+    ret = lsetxattr(tmp_path, "trusted.overlay.opaque", "y", strlen("y"), 0);
+    if (ret != 0) {
+        ERROR("Failed to set opaque flag on middle layer");
+        goto rmdir_out;
+    }
+
+    ret = snprintf(tmp_path, PATH_MAX, "lowerdir=%s/%s:%s/%s,upperdir=%s/%s,workdir=%s/%s", tmp_root_path, "l2",
+                   tmp_root_path, "l1", tmp_root_path, "l3", tmp_root_path, OVERLAY_LAYER_WORK);
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto rmdir_out;
+    }
+    merged_dir = util_path_join(tmp_root_path, OVERLAY_LAYER_MERGED);
+    if (merged_dir == NULL) {
+        ERROR("Failed to join path");
+        goto rmdir_out;
+    }
+    ret = mount("overlay", merged_dir, "overlay", 0, tmp_path);
+    if (ret != 0) {
+        ERROR("Failed to mount overlay");
+        goto rmdir_out;
+    }
+
+    // Touch file in d to force copy up of opaque directory "d" from "l2" to "l3"
+    ret = snprintf(tmp_path, PATH_MAX, "%s/%s/%s", merged_dir, "d", "f");
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto umount_out;
+    }
+    fd = util_open(tmp_path, O_CREAT, 0644);
+    if (fd == -1) {
+        ERROR("failed to write to merged directory");
+        goto umount_out;
+    }
+
+    // Check l3/d does not have opaque flag
+    ret = snprintf(tmp_path, PATH_MAX, "%s/%s/%s", tmp_root_path, "l3", "d");
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto close_out;
+    }
+    ret = lgetxattr(tmp_path, "trusted.overlay.opaque", xattr_opaque, XATTR_NAME_MAX);
+    if (ret == -1 && errno != ENODATA) {
+        ERROR("failed to read opaque flag on upper layer");
+        goto close_out;
+    }
+    if (errno != ENODATA && strncmp(xattr_redirect, "y", strlen("y")) == 0) {
+        ERROR("opaque flag erroneously copied up, consider update to kernel 4.8 or later to fix");
+        goto close_out;
+    }
+
+    // rename "d1" to "d2"
+    ret = snprintf(tmp_path, PATH_MAX, "%s/%s", merged_dir, "d1");
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto close_out;
+    }
+    new_name = util_path_join(merged_dir, "d2");
+    if (new_name == NULL) {
+        ERROR("Failed to join path");
+        goto close_out;
+    }
+    ret = rename(tmp_path, new_name);
+    if (ret != 0) {
+        // if rename failed with EXDEV, the kernel doesn't have CONFIG_OVERLAY_FS_REDIRECT_DIR enabled
+        if (errno == EXDEV) {
+            is_support = true;
+            goto close_out;
+        }
+        ERROR("failed to rename dir in merged directory");
+        goto close_out;
+    }
+
+    // get the xattr of "d2"
+    ret = snprintf(tmp_path, PATH_MAX, "%s/%s/%s", tmp_root_path, "l3", "d2");
+    if (ret >= PATH_MAX) {
+        ERROR("too long file path");
+        goto close_out;
+    }
+    ret = lgetxattr(tmp_path, "trusted.overlay.redirect", xattr_redirect, XATTR_NAME_MAX);
+    if (ret == -1 && errno != ENODATA) {
+        ERROR("failed to read redirect flag on upper layer");
+        goto close_out;
+    }
+
+    if (errno != ENODATA && strncmp(xattr_redirect, "d1", strlen("d1")) == 0) {
+        ERROR("kernel has CONFIG_OVERLAY_FS_REDIRECT_DIR enabled");
+        goto close_out;
+    }
+
+    is_support = true;
+
+    // fd must be closed before merged_dir is closed
+    // to avoid Device or resource busy.
+close_out:
+    if (close(fd) != 0) {
+        ERROR("Failed to close file");
+    }
+
+umount_out:
+    ret = umount(merged_dir);
+    if (ret != 0) {
+        perror("nigo");
+        ERROR("Failed to unmount check directory %s", merged_dir);
+        goto rmdir_out;
+    }
+
+rmdir_out:
+    ret = util_recursive_remove_path(tmp_root_path);
+    if (ret != 0) {
+        ERROR("Failed to remove check directory %s", tmp_root_path);
+        goto out;
+    }
+
+out:
+    free(tmp_root_path);
+    free(merged_dir);
+    free(new_name);
+    return is_support;
+}
