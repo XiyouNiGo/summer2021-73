@@ -68,6 +68,8 @@ int overlay2_repair_lowers(const char *id, const char *parent, const struct grap
 
 int overlay2_get_layer_fs_info(const char *id, const struct graphdriver *driver, imagetool_fs_info *fs_info);
 
+int overlay2_get_layer_diff_size(const char *id, const char *parent, const struct graphdriver *driver, int64_t *diff_size);
+
 #ifdef __cplusplus
 }
 #endif

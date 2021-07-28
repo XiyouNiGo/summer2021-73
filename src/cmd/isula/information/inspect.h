@@ -50,7 +50,7 @@ extern "C" {
         "size",                                                                             \
         's',                                                                                \
         &(cmdargs).size,                                                                    \
-        "Display total file sizes if the type is container",                                \
+        "Display total file sizes if the type is container (default 0)",                    \
         NULL                                                                                \
     },                                                                                      \
     {                                                                                       \

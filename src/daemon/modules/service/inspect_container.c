@@ -31,6 +31,7 @@
 #include "container_api.h"
 #include "isulad_config.h"
 #include "err_msg.h"
+#include "driver.h"
 
 static int dup_path_and_args(const container_t *cont, char **path, char ***args, size_t *args_len)
 {
@@ -461,8 +462,8 @@ out:
 static int pack_inspect_size_data(const container_t *cont, container_inspect *inspect)
 {
     int ret = 0;
-    // TODO: implement inspect --size
-    inspect->size_rw = inspect->size_root_fs = 666;
+
+    ret = graphdriver_get_container_size(cont, inspect);
 
     return ret;
 }

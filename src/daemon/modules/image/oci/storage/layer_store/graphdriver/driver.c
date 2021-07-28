@@ -28,6 +28,7 @@
 #include "utils.h"
 #include "isula_libutils/log.h"
 #include "image_api.h"
+#include "container_api.h"
 #include "storage.h"
 
 struct io_read_wrapper;
@@ -52,6 +53,7 @@ static const struct graphdriver_ops g_overlay2_ops = {
     .clean_up = overlay2_clean_up,
     .try_repair_lowers = overlay2_repair_lowers,
     .get_layer_fs_info = overlay2_get_layer_fs_info,
+    .get_layer_diff_size = overlay2_get_layer_diff_size,
 };
 
 /* devicemapper */
@@ -71,6 +73,7 @@ static const struct graphdriver_ops g_devmapper_ops = {
     .clean_up = devmapper_clean_up,
     .try_repair_lowers = devmapper_repair_lowers,
     .get_layer_fs_info = devmapper_get_layer_fs_info,
+    .get_layer_diff_size = devmapper_get_layer_diff_size,
 };
 
 static struct graphdriver g_drivers[] = { { .name = DRIVER_OVERLAY2_NAME, .ops = &g_overlay2_ops },
@@ -565,5 +568,69 @@ int graphdriver_get_layer_fs_info(const char *id, imagetool_fs_info *fs_info)
 
     driver_unlock();
 
+    return ret;
+}
+
+// container_get_layer_size return the real size & virtual size of the container.
+// -1 will be set when error happens.
+int graphdriver_get_container_size(const container_t *cont, container_inspect *inspect)
+{
+    int ret = 0;
+    int64_t size_rw = 0, size_root_fs = 0;
+    char *id = NULL;
+    char *image_id = NULL;
+    struct layer *rw_layer = NULL;
+
+    if (g_graphdriver == NULL) {
+        ERROR("Driver not inited yet");
+        return -1;
+    }
+
+    if (cont == NULL || inspect == NULL) {
+        ERROR("Invalid input arguments for driver get container size");
+        return -1;
+    }
+
+    if (!driver_rd_lock()) {
+        return -1;
+    }
+    
+    id = container_get_id(cont);
+    if (id == NULL) {
+        ERROR("Invalid container id");
+    }
+
+    image_id = util_without_sha256_prefix(cont->image_id);
+
+    // layer-id and container-id are equal.
+    rw_layer = storage_layer_get(id);
+    if (rw_layer == NULL) {
+        ret = -1;
+        ERROR("Failed to compute size of container rootfs %s", id);
+        goto out;
+    }
+
+    ret = g_graphdriver->ops->get_layer_diff_size(id, rw_layer->parent, g_graphdriver, &size_rw);
+    if (ret != 0) {
+        ERROR("Driver %s couldn't return diff size of container %s", g_graphdriver->name, id);
+        size_rw = -1;
+    }
+
+    ret = get_rolayer_size(image_id, &size_root_fs);
+    if (ret != 0) {
+        ERROR("Failed to compute rolayers size of container %s", id);
+        size_root_fs = -1;
+    }
+
+    if (size_rw != -1) {
+        size_root_fs += size_rw;
+    }
+
+out:
+    inspect->size_rw = size_rw;
+    inspect->size_root_fs = size_root_fs;
+    driver_unlock();
+    free(id);
+    free_layer(rw_layer);
     return ret;
 }

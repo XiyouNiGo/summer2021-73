@@ -2049,3 +2049,27 @@ out:
     free(layer_diff);
     return ret;
 }
+
+// overlay2_get_layer_diff_size calculates the changes between the specified id
+// and its parent and returns the size in bytes of the changes
+// relative to its base filesystem directory.
+int overlay2_get_layer_diff_size(const char *id, const char *parent, const struct graphdriver *driver,
+                                 int64_t *diff_size)
+{
+    int ret = 0;
+    int64_t total_size = 0, total_inode = 0;
+    char *diff_dir = NULL;
+
+    diff_dir = util_path_join_two(driver->home, id, OVERLAY_LAYER_DIFF);
+    if (diff_dir == NULL) {
+        ERROR("Failed to join layer dir:%s", id);
+        ret = -1;
+        goto out;
+    }
+    util_calculate_dir_size(diff_dir, 0, &total_size, &total_inode);
+
+out:
+    free(diff_dir);
+    *diff_size = total_size;
+    return ret;
+}
