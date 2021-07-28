@@ -48,6 +48,8 @@ int util_recursive_rmdir(const char *dirpath, int recursive_depth);
 
 char *util_path_join(const char *dir, const char *file);
 
+char *util_path_join_two(const char *dir, const char *file1, const char *file2);
+
 int util_ensure_path(char **confpath, const char *path);
 
 int util_build_dir(const char *name);

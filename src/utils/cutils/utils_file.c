@@ -450,6 +450,31 @@ char *util_path_join(const char *dir, const char *file)
     return util_strdup_s(cleaned);
 }
 
+char *util_path_join_two(const char *dir, const char *file1, const char *file2)
+{
+    int nret = 0;
+    char path[PATH_MAX] = { 0 };
+    char cleaned[PATH_MAX] = { 0 };
+
+    if (dir == NULL || file1 == NULL || file2 == NULL) {
+        ERROR("NULL dir or file failed");
+        return NULL;
+    }
+
+    nret = snprintf(path, PATH_MAX, "%s/%s/%s", dir, file1, file2);
+    if (nret < 0 || nret >= PATH_MAX) {
+        ERROR("dir or file too long failed");
+        return NULL;
+    }
+
+    if (util_clean_path(path, cleaned, sizeof(cleaned)) == NULL) {
+        ERROR("Failed to clean path: %s", path);
+        return NULL;
+    }
+
+    return util_strdup_s(cleaned);
+}
+
 /*
  * if path do not exist, this function will create it.
  */

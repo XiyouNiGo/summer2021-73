@@ -1654,7 +1654,6 @@ out:
 int overlay2_apply_diff(const char *id, const struct graphdriver *driver, const struct io_read_wrapper *content)
 {
     int ret = 0;
-    char *layer_dir = NULL;
     char *layer_diff = NULL;
     struct archive_options options = { 0 };
     char *err = NULL;
@@ -1665,14 +1664,7 @@ int overlay2_apply_diff(const char *id, const struct graphdriver *driver, const 
         goto out;
     }
 
-    layer_dir = util_path_join(driver->home, id);
-    if (layer_dir == NULL) {
-        ERROR("Failed to join layer dir:%s", id);
-        ret = -1;
-        goto out;
-    }
-
-    layer_diff = util_path_join(layer_dir, OVERLAY_LAYER_DIFF);
+    layer_diff = util_path_join_two(driver->home, id, OVERLAY_LAYER_DIFF);
     if (layer_diff == NULL) {
         ERROR("Failed to join layer diff dir:%s", id);
         ret = -1;
@@ -1690,7 +1682,6 @@ int overlay2_apply_diff(const char *id, const struct graphdriver *driver, const 
 
 out:
     free(err);
-    free(layer_dir);
     free(layer_diff);
     return ret;
 }
