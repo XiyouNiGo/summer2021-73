@@ -268,13 +268,13 @@ out:
     return ret;
 }
 
-int overlay2_init(struct graphdriver *driver, const char *drvier_home, const char **options, size_t len)
+int overlay2_init(struct graphdriver *driver, const char *driver_home, const char **options, size_t len)
 {
     int ret = 0;
     char *link_dir = NULL;
     char *root_dir = NULL;
 
-    if (driver == NULL || drvier_home == NULL) {
+    if (driver == NULL || driver_home == NULL) {
         ERROR("Invalid input arguments");
         return -1;
     }
@@ -291,9 +291,11 @@ int overlay2_init(struct graphdriver *driver, const char *drvier_home, const cha
         goto out;
     }
 
-    link_dir = util_path_join(drvier_home, OVERLAY_LINK_DIR);
+    driver->overlay_opts->support_native = overlay2_support_native(driver_home);
+
+    link_dir = util_path_join(driver_home, OVERLAY_LINK_DIR);
     if (link_dir == NULL) {
-        ERROR("Unable to create driver link directory %s.", drvier_home);
+        ERROR("Unable to create driver link directory %s.", driver_home);
         ret = -1;
         goto out;
     }
@@ -306,11 +308,11 @@ int overlay2_init(struct graphdriver *driver, const char *drvier_home, const cha
 
     rm_invalid_symlink(link_dir);
 
-    driver->home = util_strdup_s(drvier_home);
+    driver->home = util_strdup_s(driver_home);
 
-    root_dir = util_path_dir(drvier_home);
+    root_dir = util_path_dir(driver_home);
     if (root_dir == NULL) {
-        ERROR("Unable to get driver root home directory %s.", drvier_home);
+        ERROR("Unable to get driver root home directory %s.", driver_home);
         ret = -1;
         goto out;
     }
@@ -328,7 +330,7 @@ int overlay2_init(struct graphdriver *driver, const char *drvier_home, const cha
         goto out;
     }
 
-    if (!util_support_d_type(drvier_home)) {
+    if (!util_support_d_type(driver_home)) {
         ERROR("The backing %s filesystem is formatted without d_type support, which leads to incorrect behavior.",
               driver->backing_fs);
         ret = -1;
@@ -337,7 +339,7 @@ int overlay2_init(struct graphdriver *driver, const char *drvier_home, const cha
     driver->support_dtype = true;
 
     if (!driver->overlay_opts->skip_mount_home) {
-        if (util_ensure_mounted_as(drvier_home, "private") != 0) {
+        if (util_ensure_mounted_as(driver_home, "private") != 0) {
             ret = -1;
             goto out;
         }
@@ -882,7 +884,7 @@ int overlay2_create_rw(const char *id, const char *parent, const struct graphdri
     if (create_opts->storage_opt != NULL && create_opts->storage_opt->len != 0 && !driver->support_quota) {
         ERROR("--storage-opt is supported only for overlay over xfs or ext4 with 'pquota' mount option");
         isulad_set_error_message(
-            "--storage-opt is supported only for overlay over xfs or ext4 with 'pquota' mount option");
+                "--storage-opt is supported only for overlay over xfs or ext4 with 'pquota' mount option");
         ret = -1;
         goto out;
     }
@@ -1807,8 +1809,9 @@ int overlay2_get_driver_status(const struct graphdriver *driver, struct graphdri
 #define MAX_INFO_LENGTH 100
 #define BACK_FS "Backing Filesystem"
 #define SUPPORT_DTYPE "Supports d_type: true\n"
+#define NATIVE_OVERLAY_DIFF "Native Overlay Diff"
     int ret = 0;
-    int nret = 0;
+    int tmp_len = 0;
     char tmp[MAX_INFO_LENGTH] = { 0 };
 
     if (driver == NULL || status == NULL) {
@@ -1820,19 +1823,35 @@ int overlay2_get_driver_status(const struct graphdriver *driver, struct graphdri
 
     status->backing_fs = util_strdup_s(driver->backing_fs);
 
-    nret = snprintf(tmp, MAX_INFO_LENGTH, "%s: %s\n", BACK_FS, driver->backing_fs);
-    if (nret < 0 || nret >= MAX_INFO_LENGTH) {
-        ERROR("Failed to get backing fs");
+    tmp_len = snprintf(tmp, MAX_INFO_LENGTH, "%s: %s\n", BACK_FS, driver->backing_fs);
+    if (tmp_len < 0 || tmp_len >= MAX_INFO_LENGTH) {
+        ERROR("Too long driver status");
         ret = -1;
         goto out;
     }
 
-    status->status = util_string_append(SUPPORT_DTYPE, tmp);
-    if (status->status == NULL) {
-        ERROR("Failed to append SUPPORT_DTYPE");
+    strncat(tmp, SUPPORT_DTYPE, MAX_INFO_LENGTH - tmp_len);
+    tmp_len += strlen(SUPPORT_DTYPE);
+    if (tmp_len >= MAX_INFO_LENGTH) {
+        ERROR("Too long driver status");
         ret = -1;
         goto out;
     }
+
+    if (driver->overlay_opts->support_native) {
+        strncat(tmp, NATIVE_OVERLAY_DIFF ": true\n", MAX_INFO_LENGTH - tmp_len);
+        tmp_len += strlen(NATIVE_OVERLAY_DIFF);
+    } else {
+        strncat(tmp, NATIVE_OVERLAY_DIFF ": false\n", MAX_INFO_LENGTH - tmp_len);
+        tmp_len += strlen(NATIVE_OVERLAY_DIFF);
+    }
+    if (tmp_len >= MAX_INFO_LENGTH) {
+        ERROR("Too long driver status");
+        ret = -1;
+        goto out;
+    }
+
+    status->status = util_strdup_s(tmp);
 
 out:
     return ret;
