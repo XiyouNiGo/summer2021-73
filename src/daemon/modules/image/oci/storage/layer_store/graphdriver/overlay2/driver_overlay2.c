@@ -292,6 +292,7 @@ int overlay2_init(struct graphdriver *driver, const char *driver_home, const cha
     }
 
     driver->overlay_opts->support_native = overlay2_support_native(driver_home);
+    driver->support_dtype = util_support_d_type(driver_home);
 
     link_dir = util_path_join(driver_home, OVERLAY_LINK_DIR);
     if (link_dir == NULL) {
@@ -1808,7 +1809,7 @@ int overlay2_get_driver_status(const struct graphdriver *driver, struct graphdri
 {
 #define MAX_INFO_LENGTH 100
 #define BACK_FS "Backing Filesystem"
-#define SUPPORT_DTYPE "Supports d_type: true\n"
+#define SUPPORT_DTYPE "Supports d_type"
 #define NATIVE_OVERLAY_DIFF "Native Overlay Diff"
     int ret = 0;
     int tmp_len = 0;
@@ -1830,8 +1831,13 @@ int overlay2_get_driver_status(const struct graphdriver *driver, struct graphdri
         goto out;
     }
 
-    strncat(tmp, SUPPORT_DTYPE, MAX_INFO_LENGTH - tmp_len);
-    tmp_len += strlen(SUPPORT_DTYPE);
+    if (driver->support_dtype) {
+        strncat(tmp, SUPPORT_DTYPE ": true\n", MAX_INFO_LENGTH - tmp_len);
+        tmp_len += strlen(SUPPORT_DTYPE);
+    } else {
+        strncat(tmp, SUPPORT_DTYPE ": false\n", MAX_INFO_LENGTH - tmp_len);
+        tmp_len += strlen(SUPPORT_DTYPE);
+    }
     if (tmp_len >= MAX_INFO_LENGTH) {
         ERROR("Too long driver status");
         ret = -1;
