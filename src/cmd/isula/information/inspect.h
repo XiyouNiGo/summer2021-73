@@ -25,43 +25,18 @@
 extern "C" {
 #endif
 
-#define INSPECT_OPTIONS(cmdargs)                                                            \
-    {                                                                                       \
-        CMD_OPT_TYPE_STRING,                                                                \
-        false,                                                                              \
-        "format",                                                                           \
-        'f',                                                                                \
-        &(cmdargs).format,                                                                  \
-        "Format the output using the given go template",                                    \
-        NULL                                                                                \
-    },                                                                                      \
-    {                                                                                       \
-        CMD_OPT_TYPE_CALLBACK,                                                              \
-        false,                                                                              \
-        "time",                                                                             \
-        't',                                                                                \
-        &(cmdargs).time,                                                                    \
-        "Seconds to wait for inspect timeout (default 120)",                                \
-        command_convert_int                                                                 \
-    },                                                                                      \
-    {                                                                                       \
-        CMD_OPT_TYPE_BOOL,                                                                  \
-        false,                                                                              \
-        "size",                                                                             \
-        's',                                                                                \
-        &(cmdargs).size,                                                                    \
-        "Display total file sizes if the type is container",                                \
-        NULL                                                                                \
-    },                                                                                      \
-    {                                                                                       \
-        CMD_OPT_TYPE_STRING,                                                                \
-        false,                                                                              \
-        "type",                                                                             \
-        0,                                                                                  \
-        &(cmdargs).inspect_type,                                                            \
-        "Return JSON for specified type",                                                   \
-        NULL                                                                                \
-    }                                                                                       \
+#define INSPECT_OPTIONS(cmdargs)                                                         \
+    { CMD_OPT_TYPE_STRING,                                                               \
+        false,                                                                             \
+        "format",                                                                          \
+        'f',                                                                               \
+        &(cmdargs).format,                                                                 \
+        "Format the output using the given go template",                                   \
+        NULL },                                                                            \
+    {                                                                                    \
+                                                                                         CMD_OPT_TYPE_CALLBACK, false, "time", 't', &(cmdargs).time,                      \
+                                                                                         "Seconds to wait for inspect timeout (default 120)", command_convert_int \
+    }
 
 extern const char g_cmd_inspect_desc[];
 extern const char g_cmd_inspect_usage[];

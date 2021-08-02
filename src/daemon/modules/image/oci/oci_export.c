@@ -39,7 +39,7 @@ int oci_do_export(char *id, char *file)
         isulad_set_error_message("Failed to export rootfs with error: failed to mount rootfs");
         return -1;
     }
-    
+
     ret = archive_chroot_tar(mount_point, file, &errmsg);
     if (ret != 0) {
         ERROR("failed to export container %s to file %s: %s", id, file, errmsg);

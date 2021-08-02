@@ -179,7 +179,6 @@ struct isula_inspect_request {
     char *name;
     bool bformat;
     int timeout;
-    bool bsize;
 };
 
 struct isula_inspect_response {
