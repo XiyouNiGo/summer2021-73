@@ -1043,7 +1043,6 @@ public:
         }
         grequest->set_bformat(request->bformat);
         grequest->set_timeout(request->timeout);
-        grequest->set_bsize(request->bsize);
 
         return 0;
     }
