@@ -28,6 +28,7 @@
 #include "devices_constants.h"
 #include "storage.h"
 #include "image_api.h"
+#include "container_api.h"
 #include "isula_libutils/container_inspect.h"
 
 struct graphdriver_status;
@@ -79,6 +80,8 @@ struct graphdriver_ops {
     int (*try_repair_lowers)(const char *id, const char *parent, const struct graphdriver *driver);
 
     int (*get_layer_fs_info)(const char *id, const struct graphdriver *driver, imagetool_fs_info *fs_info);
+
+    int (*get_layer_diff_size)(const char *id, const char *parent, const struct graphdriver *driver, int64_t *diff_size);
 };
 
 struct graphdriver {
@@ -131,6 +134,8 @@ int graphdriver_try_repair_lowers(const char *id, const char *parent);
 container_inspect_graph_driver *graphdriver_get_metadata(const char *id);
 
 int graphdriver_get_layer_fs_info(const char *id, imagetool_fs_info *fs_info);
+
+int graphdriver_get_container_size(const container_t *cont, container_inspect *inspect);
 
 #ifdef __cplusplus
 }

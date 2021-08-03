@@ -450,6 +450,31 @@ char *util_path_join(const char *dir, const char *file)
     return util_strdup_s(cleaned);
 }
 
+char *util_path_join_two(const char *dir, const char *file1, const char *file2)
+{
+    int nret = 0;
+    char path[PATH_MAX] = { 0 };
+    char cleaned[PATH_MAX] = { 0 };
+
+    if (dir == NULL || file1 == NULL || file2 == NULL) {
+        ERROR("NULL dir or file failed");
+        return NULL;
+    }
+
+    nret = snprintf(path, PATH_MAX, "%s/%s/%s", dir, file1, file2);
+    if (nret < 0 || nret >= PATH_MAX) {
+        ERROR("dir or file too long failed");
+        return NULL;
+    }
+
+    if (util_clean_path(path, cleaned, sizeof(cleaned)) == NULL) {
+        ERROR("Failed to clean path: %s", path);
+        return NULL;
+    }
+
+    return util_strdup_s(cleaned);
+}
+
 /*
  * if path do not exist, this function will create it.
  */
@@ -1428,6 +1453,49 @@ out:
     free(base);
     free(dir);
     return result;
+}
+
+char *util_get_default_tmp_dir()
+{
+    char *dir = NULL;
+    dir = getenv("TMPDIR");
+    if (dir == NULL) {
+        dir = "/tmp";
+    }
+    return dir;
+}
+
+char *util_get_tmp_file(const char *dir, const char *pattern)
+{
+    char *join_path = NULL;
+    char *tmp_file = NULL;
+
+    if (dir == NULL) {
+        dir = util_get_default_tmp_dir();
+    }
+
+    join_path = util_path_join(dir, pattern);
+    if (join_path == NULL) {
+        ERROR("join path failed");
+        goto out;
+    }
+
+    while (1) {
+        tmp_file = get_random_tmp_file(join_path);
+        if (tmp_file == NULL) {
+            ERROR("get random tmp file failed");
+            goto out;
+        }
+        if (util_file_exists(tmp_file)) {
+            free(tmp_file);
+            continue;
+        }
+        break;
+    }
+
+out:
+    free(join_path);
+    return tmp_file;
 }
 
 static int do_atomic_write_file(const char *fname, const char *content, size_t content_len, mode_t mode, bool sync)
