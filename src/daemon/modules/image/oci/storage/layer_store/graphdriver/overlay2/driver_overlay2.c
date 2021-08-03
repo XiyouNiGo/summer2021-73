@@ -2091,7 +2091,7 @@ int overlay2_get_layer_diff_size(const char *id, const char *parent, const struc
         ret = -1;
         goto out;
     }
-    util_calculate_dir_size(diff_dir, 0, &total_size, &total_inode);
+    utils_calculate_dir_size_without_hardlink(diff_dir, &total_size, &total_inode);
 
 out:
     free(diff_dir);
