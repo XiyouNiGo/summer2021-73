@@ -1328,13 +1328,15 @@ static void recursive_cal_dir_size__without_hardlink_helper(const char *dirpath,
             *total_size = *total_size + subdir_size;
             *total_inode = *total_inode + subdir_inode;
         } else {
-            if (map_search(map, (void *)(&(fstat.st_ino))) != NULL) {
+            if (fstat.st_nlink > 1 && map_search(map, (void *)(&(fstat.st_ino))) != NULL) {
                 continue;
             }
             *total_size = *total_size + fstat.st_size;
             *total_inode = *total_inode + 1;
             bool val = true;
-            map_insert(map, (void *)(&(fstat.st_ino)), (void *)&val);
+            if (fstat.st_nlink > 1) {
+                map_insert(map, (void *)(&(fstat.st_ino)), (void *)&val);
+            }
         }
     }
 
