@@ -119,6 +119,8 @@ char *util_get_default_tmp_dir();
 
 char *util_get_tmp_file(const char *dir, const char *pattern);
 
+char *util_get_file_path_fd(const int fd);
+
 #ifdef __cplusplus
 }
 #endif
