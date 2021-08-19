@@ -2113,8 +2113,8 @@ bool overlay2_support_native(const char *root_path)
     char *tmp_root_path = NULL;
     char *merged_dir = NULL;
     char *new_name = NULL;
-    char xattr_redirect[XATTR_NAME_MAX] = { 0 };
-    char xattr_opaque[XATTR_NAME_MAX] = { 0 };
+    char xattr_redirect[XATTR_SIZE_MAX] = { 0 };
+    char xattr_opaque[XATTR_SIZE_MAX] = { 0 };
     char tmp_path[PATH_MAX] = { 0 };
 
     if (running_in_userns()) {
@@ -2247,7 +2247,7 @@ bool overlay2_support_native(const char *root_path)
         ERROR("too long file path");
         goto close_out;
     }
-    ret = lgetxattr(tmp_path, "trusted.overlay.opaque", xattr_opaque, XATTR_NAME_MAX);
+    ret = lgetxattr(tmp_path, "trusted.overlay.opaque", xattr_opaque, XATTR_SIZE_MAX);
     if (ret == -1 && errno != ENODATA) {
         ERROR("failed to read opaque flag on upper layer");
         goto close_out;
@@ -2285,7 +2285,7 @@ bool overlay2_support_native(const char *root_path)
         ERROR("too long file path");
         goto close_out;
     }
-    ret = lgetxattr(tmp_path, "trusted.overlay.redirect", xattr_redirect, XATTR_NAME_MAX);
+    ret = lgetxattr(tmp_path, "trusted.overlay.redirect", xattr_redirect, XATTR_SIZE_MAX);
     if (ret == -1 && errno != ENODATA) {
         ERROR("failed to read redirect flag on upper layer");
         goto close_out;
