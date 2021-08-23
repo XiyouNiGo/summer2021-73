@@ -162,5 +162,18 @@ static inline void linked_list_qsort(struct linked_list *left, struct linked_lis
     }
 }
 
+/* Retrieve the NTH element of list. */
+static inline void *linked_list_at(struct linked_list *list, int n)
+{
+    /* Note: the index starts at 0. */
+    while (n-- >= 0) {
+        if (list == NULL) {
+            return NULL;
+        }
+        list = list->next;
+    }
+    return list ? list->elem : NULL;
+}
+
 #endif
 
