@@ -2075,6 +2075,29 @@ out:
     return ret;
 }
 
+bool overlay2_is_parent(const char *id, const char *parent)
+{
+    bool ret = false;
+    struct layer *rw_layer = NULL;
+
+    if (id == NULL || parent == NULL) {
+        return false;
+    }
+
+    rw_layer = storage_layer_get(id);
+    if (rw_layer == NULL || rw_layer->parent == NULL) {
+        ERROR("Failed to compute size of container rootfs %s", id);
+        goto out;
+    }
+    if (strcmp(parent, rw_layer->parent) == 0) {
+        ret = true;
+    }
+
+out:
+    free_layer(rw_layer);
+    return ret;
+}
+
 // overlay2_get_layer_diff_size calculates the changes between the specified id
 // and its parent and returns the size in bytes of the changes
 // relative to its base filesystem directory.
