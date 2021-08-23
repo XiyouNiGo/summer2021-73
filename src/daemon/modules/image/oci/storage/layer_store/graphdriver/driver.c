@@ -604,7 +604,7 @@ int graphdriver_get_container_size(const container_t *cont, container_inspect *i
 
     // layer-id and container-id are equal.
     rw_layer = storage_layer_get(id);
-    if (rw_layer == NULL) {
+    if (rw_layer == NULL || rw_layer->parent == NULL) {
         ret = -1;
         ERROR("Failed to compute size of container rootfs %s", id);
         goto out;
@@ -632,5 +632,127 @@ out:
     driver_unlock();
     free(id);
     free_layer(rw_layer);
+    return ret;
+}
+
+// naive_changes produces a list of changes between the specified layer
+// and its parent layer. If parent is NULL, then all changes will be ADD changes.
+int naive_changes(const char *id, const char *parent, const struct graphdriver *driver, struct change_result **result)
+{
+    int ret = 0;
+    char *layer_root_fs = NULL;
+    char *parent_root_fs = NULL;
+
+    if (driver == NULL) {
+        ret = -1;
+        ERROR("Driver not inited yet");
+        goto out;
+    }
+
+    if (id == NULL) {
+        ret = -1;
+        ERROR("Invalid input arguments for driver mount layer");
+        goto out;
+    }
+
+    if (!driver_rd_lock()) {
+        ret = -1;
+        goto out;
+    }
+
+    layer_root_fs = driver->ops->mount_layer(id, driver, NULL);
+    if (layer_root_fs == NULL) {
+        ret = -1;
+        goto out;
+    }
+
+    if (parent != NULL) {
+        parent_root_fs = driver->ops->mount_layer(parent, driver, NULL);
+        if (parent_root_fs == NULL) {
+            ret = -1;
+            goto umount_layer;
+        }
+    }
+
+    ret = changes_dirs(layer_root_fs, parent_root_fs, result);
+    if (ret != 0) {
+        goto umount_parent;
+    }
+
+umount_parent:
+    if (parent != NULL) {
+        ret = driver->ops->umount_layer(id, driver);
+        if (ret != 0) {
+            goto umount_layer;
+        }
+    }
+
+umount_layer:
+    ret = driver->ops->umount_layer(id, driver);
+    if (ret != 0) {
+        goto out;
+    }
+
+out:
+    driver_unlock();
+    free(layer_root_fs);
+    free(parent_root_fs);
+    return ret;
+}
+
+int naive_get_layer_diff_size(const char *id, const char *parent, const struct graphdriver *driver, int64_t *diff_size)
+{
+    int ret = 0;
+    char *layer_fs = NULL;
+    struct change_result *result = NULL;
+
+    if (driver == NULL) {
+        ERROR("Driver not inited yet");
+        ret = -1;
+        goto out;
+    }
+
+    if (id == NULL) {
+        ERROR("Invalid input arguments for driver mount layer");
+        ret = -1;
+        goto out;
+    }
+
+    ret = naive_changes(id, parent, driver, &result);
+    if (ret != 0) {
+        ERROR("Failed to get changes");
+        ret = -1;
+        goto out;
+    }
+
+    if (!driver_rd_lock()) {
+        ret = -1;
+        goto out;
+    }
+
+    layer_fs = driver->ops->mount_layer(id, driver, NULL);
+    if (layer_fs == NULL) {
+        ret = -1;
+        goto out;
+    }
+
+    ret = changes_size(layer_fs, result, diff_size);
+    if (ret != 0) {
+        ERROR("Failed to calculate changes size");
+        goto out;
+    }
+
+    ret = driver->ops->umount_layer(id, driver);
+    if (ret != 0) {
+        goto out;
+    }
+
+out:
+    driver_unlock();
+    if (ret != 0) {
+        *diff_size = -1;
+    }
+    free(layer_fs);
+    change_result_free(result);
     return ret;
 }
