@@ -2107,6 +2107,18 @@ int overlay2_get_layer_diff_size(const char *id, const char *parent, const struc
     int64_t total_size = 0, total_inode = 0;
     char *diff_dir = NULL;
 
+    if (driver == NULL) {
+        ERROR("Driver not inited yet");
+        ret = -1;
+        goto out;
+    }
+
+    if (id == NULL) {
+        ERROR("Invalid input arguments for driver mount layer");
+        ret = -1;
+        goto out;
+    }
+
     if (driver->overlay_opts->support_native == false || !overlay2_is_parent(id, parent)) {
         return naive_get_layer_diff_size(id, parent, driver, diff_size);
     }
