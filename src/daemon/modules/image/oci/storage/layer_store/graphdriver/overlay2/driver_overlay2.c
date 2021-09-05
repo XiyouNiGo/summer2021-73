@@ -292,6 +292,10 @@ int overlay2_init(struct graphdriver *driver, const char *driver_home, const cha
     }
 
     driver->overlay_opts->support_native = overlay2_support_native(driver_home);
+    if (driver->overlay_opts->support_native) {
+        WARN("Not using native diff for overlay2, this may cause degraded performance for calculate SizeRw and SizeRootFs");
+    }
+
     driver->support_dtype = util_support_d_type(driver_home);
 
     link_dir = util_path_join(driver_home, OVERLAY_LINK_DIR);
