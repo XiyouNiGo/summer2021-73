@@ -627,9 +627,9 @@ int graphdriver_get_container_size(const container_t *cont, container_inspect *i
     }
 
 out:
+    driver_unlock();
     inspect->size_rw = size_rw;
     inspect->size_root_fs = size_root_fs;
-    driver_unlock();
     free(id);
     free_layer(rw_layer);
     return ret;
