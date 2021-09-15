@@ -292,6 +292,10 @@ int overlay2_init(struct graphdriver *driver, const char *driver_home, const cha
     }
 
     driver->overlay_opts->support_native = overlay2_support_native(driver_home);
+    if (driver->overlay_opts->support_native) {
+        WARN("Not using native diff for overlay2, this may cause degraded performance for calculate SizeRw and SizeRootFs");
+    }
+
     driver->support_dtype = util_support_d_type(driver_home);
 
     link_dir = util_path_join(driver_home, OVERLAY_LINK_DIR);
@@ -2075,6 +2079,28 @@ out:
     return ret;
 }
 
+bool overlay2_is_parent(const char *id, const char *parent)
+{
+    bool ret = false;
+    struct layer *rw_layer = NULL;
+
+    if (id == NULL || parent == NULL) {
+        return false;
+    }
+
+    rw_layer = storage_layer_get(id);
+    if (rw_layer == NULL || rw_layer->parent == NULL) {
+        ERROR("Failed to compute size of container rootfs %s", id);
+        goto out;
+    }
+
+    ret = (strcmp(parent, rw_layer->parent) == 0);
+
+out:
+    free_layer(rw_layer);
+    return ret;
+}
+
 // overlay2_get_layer_diff_size calculates the changes between the specified id
 // and its parent and returns the size in bytes of the changes
 // relative to its base filesystem directory.
@@ -2085,13 +2111,29 @@ int overlay2_get_layer_diff_size(const char *id, const char *parent, const struc
     int64_t total_size = 0, total_inode = 0;
     char *diff_dir = NULL;
 
+    if (driver == NULL) {
+        ERROR("Driver not inited yet");
+        ret = -1;
+        goto out;
+    }
+
+    if (id == NULL) {
+        ERROR("Invalid input arguments for driver mount layer");
+        ret = -1;
+        goto out;
+    }
+
+    if (driver->overlay_opts->support_native == false || !overlay2_is_parent(id, parent)) {
+        return naive_get_layer_diff_size(id, parent, driver, diff_size);
+    }
+
     diff_dir = util_path_join_two(driver->home, id, OVERLAY_LAYER_DIFF);
     if (diff_dir == NULL) {
         ERROR("Failed to join layer dir:%s", id);
         ret = -1;
         goto out;
     }
-    util_calculate_dir_size(diff_dir, 0, &total_size, &total_inode);
+    utils_calculate_dir_size_without_hardlink(diff_dir, &total_size, &total_inode);
 
 out:
     free(diff_dir);
@@ -2113,8 +2155,8 @@ bool overlay2_support_native(const char *root_path)
     char *tmp_root_path = NULL;
     char *merged_dir = NULL;
     char *new_name = NULL;
-    char xattr_redirect[XATTR_NAME_MAX] = { 0 };
-    char xattr_opaque[XATTR_NAME_MAX] = { 0 };
+    char xattr_redirect[XATTR_SIZE_MAX] = { 0 };
+    char xattr_opaque[XATTR_SIZE_MAX] = { 0 };
     char tmp_path[PATH_MAX] = { 0 };
 
     if (running_in_userns()) {
@@ -2247,7 +2289,7 @@ bool overlay2_support_native(const char *root_path)
         ERROR("too long file path");
         goto close_out;
     }
-    ret = lgetxattr(tmp_path, "trusted.overlay.opaque", xattr_opaque, XATTR_NAME_MAX);
+    ret = lgetxattr(tmp_path, "trusted.overlay.opaque", xattr_opaque, XATTR_SIZE_MAX);
     if (ret == -1 && errno != ENODATA) {
         ERROR("failed to read opaque flag on upper layer");
         goto close_out;
@@ -2285,7 +2327,7 @@ bool overlay2_support_native(const char *root_path)
         ERROR("too long file path");
         goto close_out;
     }
-    ret = lgetxattr(tmp_path, "trusted.overlay.redirect", xattr_redirect, XATTR_NAME_MAX);
+    ret = lgetxattr(tmp_path, "trusted.overlay.redirect", xattr_redirect, XATTR_SIZE_MAX);
     if (ret == -1 && errno != ENODATA) {
         ERROR("failed to read redirect flag on upper layer");
         goto close_out;

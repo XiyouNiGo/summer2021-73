@@ -1328,13 +1328,15 @@ static void recursive_cal_dir_size__without_hardlink_helper(const char *dirpath,
             *total_size = *total_size + subdir_size;
             *total_inode = *total_inode + subdir_inode;
         } else {
-            if (map_search(map, (void *)(&(fstat.st_ino))) != NULL) {
+            if (fstat.st_nlink > 1 && map_search(map, (void *)(&(fstat.st_ino))) != NULL) {
                 continue;
             }
             *total_size = *total_size + fstat.st_size;
             *total_inode = *total_inode + 1;
             bool val = true;
-            map_insert(map, (void *)(&(fstat.st_ino)), (void *)&val);
+            if (fstat.st_nlink > 1) {
+                map_insert(map, (void *)(&(fstat.st_ino)), (void *)&val);
+            }
         }
     }
 
@@ -2136,4 +2138,25 @@ out:
     free(dst);
 
     return ret;
+}
+
+char *util_get_file_path_fd(const int fd)
+{
+    int nret = 0;
+    char file_path[PATH_MAX] = { 0 };
+    char tmp_path[PATH_MAX] = { 0 };
+
+    nret = snprintf(tmp_path, PATH_MAX, "/proc/self/fd/%d", fd);
+    if (nret < 0 || nret >= PATH_MAX) {
+        ERROR("Too long directory path %s", tmp_path);
+        return NULL;
+    }
+
+    nret = readlink(tmp_path, file_path, PATH_MAX - 1);
+    if (nret == -1) {
+        ERROR("Failed to readlink %s", tmp_path);
+        return NULL;
+    }
+
+    return util_strdup_s(file_path);
 }

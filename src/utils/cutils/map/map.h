@@ -38,6 +38,9 @@ typedef key_value_freer map_kvfree_func;
 /* function to compare key */
 typedef key_comparator map_cmp_func;
 
+/* funtion to take use of some objects, but not free them */
+void map_free_nothing(void *key, void *val);
+
 /* function to remove element by key */
 bool map_remove(map_t *map, void *key);
 
@@ -104,6 +107,8 @@ map_t *map_new(map_type_t kvtype, map_cmp_func comparator, map_kvfree_func kvfre
 void map_free(map_t *map);
 
 void map_clear(map_t *map);
+
+map_t *map_copy(map_t *map, void *(*copy)(void *));
 
 #if defined(__cplusplus) || defined(c_plusplus)
 }
