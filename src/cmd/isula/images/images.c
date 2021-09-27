@@ -292,7 +292,7 @@ static int list_images(const struct client_arguments *args)
         }
     }
     config = get_connect_config(args);
-    
+
     if (args->argc == 0) {
         ret = ops->image.list(&request, response, &config);
         if (ret != 0) {
@@ -312,7 +312,7 @@ static int list_images(const struct client_arguments *args)
         }
         goto out;
     }
-    
+
     for (i = 0; i < args->argc; i++) {
         if ((colon_pos = strchr(args->argv[i], ':')) != NULL) {
             split_res = util_string_split(args->argv[i], ':');
@@ -346,7 +346,7 @@ static int list_images(const struct client_arguments *args)
             images_info_print(response);
         }
     }
-    
+
 out:
     isula_filters_free(request.filters);
     if (colon_pos) {

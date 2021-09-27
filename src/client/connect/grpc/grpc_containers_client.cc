@@ -109,7 +109,7 @@ public:
 
         if (gresponse->registry_mirrors_size() > 0 && !gresponse->registry_mirrors().empty()) {
             response->registry_mirrors =
-                    static_cast<char **>(util_common_calloc_s(gresponse->registry_mirrors_size() * sizeof(char *)));
+                static_cast<char **>(util_common_calloc_s(gresponse->registry_mirrors_size() * sizeof(char *)));
             if (response->registry_mirrors == nullptr) {
                 ERROR("out of memory");
                 response->cc = ISULAD_ERR_MEMOUT;
@@ -123,7 +123,7 @@ public:
 
         if (gresponse->insecure_registries_size() > 0 && !gresponse->insecure_registries().empty()) {
             response->insecure_registries =
-                    static_cast<char **>(util_common_calloc_s(gresponse->insecure_registries_size() * sizeof(char *)));
+                static_cast<char **>(util_common_calloc_s(gresponse->insecure_registries_size() * sizeof(char *)));
             if (response->insecure_registries == nullptr) {
                 ERROR("out of memory");
                 response->cc = ISULAD_ERR_MEMOUT;
@@ -137,7 +137,7 @@ public:
 
         if (gresponse->runtimes_size() > 0 && !gresponse->runtimes().empty()) {
             response->runtimes =
-                    static_cast<char **>(util_common_calloc_s(gresponse->runtimes_size() * sizeof(char *)));
+                static_cast<char **>(util_common_calloc_s(gresponse->runtimes_size() * sizeof(char *)));
             if (response->runtimes == nullptr) {
                 ERROR("out of memory");
                 response->cc = ISULAD_ERR_MEMOUT;
@@ -152,7 +152,7 @@ public:
         if (!gresponse->default_runtime().empty()) {
             response->default_runtime = util_strdup_s(gresponse->default_runtime().c_str());
         }
-        
+
         return 0;
     }
 
