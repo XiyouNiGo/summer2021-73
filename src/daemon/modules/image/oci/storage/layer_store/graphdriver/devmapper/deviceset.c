@@ -168,7 +168,7 @@ static int devmapper_parse_options(struct device_set *devset, const char **optio
             if (!util_valid_str(val)) {
                 ERROR("Invalid dm.override_udev_sync_check or devicemapper.override_udev_sync_check value");
                 isulad_set_error_message(
-                        "Invalid dm.override_udev_sync_check or devicemapper.override_udev_sync_check value");
+                    "Invalid dm.override_udev_sync_check or devicemapper.override_udev_sync_check value");
                 ret = -1;
                 goto out;
             }

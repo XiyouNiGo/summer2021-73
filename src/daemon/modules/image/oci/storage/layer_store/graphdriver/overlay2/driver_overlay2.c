@@ -889,7 +889,7 @@ int overlay2_create_rw(const char *id, const char *parent, const struct graphdri
     if (create_opts->storage_opt != NULL && create_opts->storage_opt->len != 0 && !driver->support_quota) {
         ERROR("--storage-opt is supported only for overlay over xfs or ext4 with 'pquota' mount option");
         isulad_set_error_message(
-                "--storage-opt is supported only for overlay over xfs or ext4 with 'pquota' mount option");
+            "--storage-opt is supported only for overlay over xfs or ext4 with 'pquota' mount option");
         ret = -1;
         goto out;
     }

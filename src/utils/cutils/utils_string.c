@@ -940,7 +940,7 @@ void util_reverse_string(char *s)
 {
     char tmp = '\0';
     char *first = NULL, *last = NULL;
-    
+
     if (s == NULL) {
         return;
     }

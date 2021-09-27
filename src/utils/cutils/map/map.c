@@ -389,7 +389,8 @@ void map_free(map_t *map)
 }
 
 /* function to return its argument unchanged. */
-static void *identity(void *shallow) {
+static void *identity(void *shallow)
+{
     return shallow;
 }
 

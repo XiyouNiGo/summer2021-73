@@ -774,7 +774,7 @@ static int add_changes(struct file_info *new_info, struct file_info *old_info, s
     struct linked_list *new_node = NULL;
     map_itor *itor = NULL;
 
-    if (new_info == NULL){
+    if (new_info == NULL) {
         ERROR("Can not add change for empty directory");
         return -1;
     }
@@ -896,7 +896,7 @@ static int add_changes(struct file_info *new_info, struct file_info *old_info, s
     // If there were changes inside this directory, we need to add it, even if the directory
     // itself wasn't changed. This is needed to properly save and restore filesystem permissions.
     tmp_path = file_info_get_path(new_info);
-    if (result->list_len > size_at_entry && strcmp(tmp_path, "/") != 0 && 
+    if (result->list_len > size_at_entry && strcmp(tmp_path, "/") != 0 &&
         S_ISDIR(new_info->stat->st_mode) && !new_info->added) {
         tmp_change = (struct change*)util_common_calloc_s(sizeof(struct change));
         if (tmp_change == NULL) {
@@ -1032,7 +1032,7 @@ int changes_size(const char *new_dir, struct change_result *result, int64_t *siz
             }
         }
     }
-    
+
     map_free(map);
     *size = tmp_size;
     return ret;

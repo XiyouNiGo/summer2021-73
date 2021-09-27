@@ -594,7 +594,7 @@ int graphdriver_get_container_size(const container_t *cont, container_inspect *i
     if (!driver_rd_lock()) {
         return -1;
     }
-    
+
     id = container_get_id(cont);
     if (id == NULL) {
         ERROR("Invalid container id");

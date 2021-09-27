@@ -318,7 +318,7 @@ static int client_inspect(const struct client_arguments *args, char **json)
         }
         status = INSPECT_STATUS_NO_SUCH_OBJECT;
     }
-    
+
     if (inspect_type == NULL || inspect_image) {
         result = client_inspect_image(&request, response, &config, ops);
         if (result != IMAGE_NOT_FOUND) {

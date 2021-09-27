@@ -73,7 +73,8 @@ int overlay2_get_layer_fs_info(const char *id, const struct graphdriver *driver,
 
 bool overlay2_is_parent(const char *id, const char *parent);
 
-int overlay2_get_layer_diff_size(const char *id, const char *parent, const struct graphdriver *driver, int64_t *diff_size);
+int overlay2_get_layer_diff_size(const char *id, const char *parent, const struct graphdriver *driver,
+                                 int64_t *diff_size);
 
 bool overlay2_support_native(const char *root_path);
 
