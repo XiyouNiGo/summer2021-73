@@ -6,9 +6,12 @@ https://gitee.com/openeuler-competition/summer-2021/issues/I3EPVK
 
 #### 分支说明
 + master：项目相关说明及使用
-+ iSulad-dev：iSulad --size及--type实现
++ iSulad：iSulad --size及--type实现
 + iSulad-fix：新功能或者补丁
 + lcr：lcr相关修改
+
+#### 正式版本
+https://gitee.com/xiyounigo/iSulad
 
 #### 安装教程
 
